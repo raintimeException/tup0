@@ -18,6 +18,7 @@ This is meant to be a super simple text editor with a limited command subset. In
     [] ":ex"                    - explore current directory (?)
     [x] ":q"                     - quit.
     TODO:                       ...
+    [] create a Makefile to simplify the compilation process for different platforms (e.g., Linux, Windows, macOS).
 
 ## FIXES:
     [] fix write (file name and '.' when inserting).
