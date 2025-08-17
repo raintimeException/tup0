@@ -3,7 +3,6 @@
 
 #include "nob.h"
 
-
 //
 // DEPs stuff
 //
@@ -34,6 +33,7 @@ void tup_delete(void);
 void tup_write(void);
 void tup_quit(void);
 
+
 #ifdef TUP_IMPLEMENTATION
 void tup_command_dispatcher(void)
 {
@@ -54,19 +54,19 @@ void tup_command_dispatcher(void)
                     tup_help(help_Level);
                 }; break;
                 case 'i': {
-                    NOB_TODO("insert");
+                    tup_insert();
                 }; break;
                 case 'a': {
-                    NOB_TODO("append");
+                    tup_append();
                 }; break;
                 case 'w': {
-                    NOB_TODO("write");
+                    tup_write();
                 }; break;
                 case 'd': {
-                    NOB_TODO("delete");
+                    tup_delete();
                 }; break;
                 case 'q': {
-                    NOB_TODO("quit");
+                    tup_quit();
                 }; break;
                 default: {
                     printf("?: %s", command);
@@ -117,4 +117,26 @@ void tup_check_desperation_level(void)
         help_Level = EXTREME;
     }
 }
+
+void tup_insert(void)
+{
+    NOB_TODO("tup_insert");
+}
+void tup_append(void)
+{
+    NOB_TODO("tup_insert");
+}
+void tup_delete(void)
+{
+    NOB_TODO("tup_insert");
+}
+void tup_write(void)
+{
+    NOB_TODO("tup_insert");
+}
+void tup_quit(void)
+{
+    NOB_TODO("tup_insert");
+}
+
 #endif // TUP_IMPLEMENTATION
