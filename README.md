@@ -17,4 +17,4 @@ This is meant to be a super simple text editor with a limited command subset. In
     TODO:                       ...
 
 ## CREDITS:
-    nob.h [https://github.com/tsoding/nob.h](https://github.com/tsoding/nob.h)
+nob.h [https://github.com/tsoding/nob.h](https://github.com/tsoding/nob.h)
