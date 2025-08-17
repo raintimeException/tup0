@@ -30,7 +30,7 @@ void tup_check_desperation_level(void);
 void tup_insert(void);
 void tup_append(void);
 void tup_delete(void);
-void tup_write(void);
+void tup_write(const char *path);
 void tup_quit(void);
 
 
@@ -41,7 +41,7 @@ void tup_command_dispatcher(void)
     if (!command) NOB_ASSERT(command == NULL && "Buy more RAM lol!!!");
 
     while (1) {
-        tup_help(help_Level);
+        // tup_help(help_Level);
 
         if (!fgets(command, NOB_DA_INIT_CAP, stdin)) {
             nob_log(NOB_ERROR, "Could not read the command: %s", command);
@@ -59,7 +59,12 @@ void tup_command_dispatcher(void)
                     tup_append();
                 }; break;
                 case 'w': {
-                    tup_write();
+                    char *path = (char *)calloc(NOB_DA_INIT_CAP, sizeof(char));
+                    if (!path) NOB_ASSERT(path == NULL && "Buy more RAM lol!!!");
+                    if (!fgets(path, NOB_DA_INIT_CAP, stdin)) {
+                        nob_log(NOB_ERROR, "Could not read the filename: %s", path);
+                    }
+                    tup_write(path);
                 }; break;
                 case 'd': {
                     tup_delete();
@@ -133,19 +138,40 @@ void tup_insert(void)
 }
 void tup_append(void)
 {
-    NOB_TODO("tup_insert");
+    // TODO: implement this.
+    tup_insert();
 }
 void tup_delete(void)
 {
-    NOB_TODO("tup_insert");
+    NOB_TODO("tup_delete");
 }
-void tup_write(void)
+
+void tup_write(const char *path)
 {
-    NOB_TODO("tup_insert");
+    if (!nob_write_entire_file(path, lines.items, lines.count)) {
+        nob_log(NOB_ERROR, "Could not write into the file: %s", path);
+    }
+    nob_sb_free(lines);
+    memset(&lines, 0, sizeof(lines));
+    nob_log(NOB_INFO, "buffer was written into: %s", path);
 }
 void tup_quit(void)
 {
-    NOB_TODO("tup_insert");
+    if (lines.count > 0) {
+        printf("are you sure?(y/n), the buffer is not empty: %zu\n", lines.count);
+        char response = fgetc(stdin);
+        if (response == 'y' || response == 'Y') {
+            printf("ok.\n");
+            exit(1);
+        } else {
+            tup_command_dispatcher();
+        }
+    } else {
+        printf("lines in the buffer: %zu\n", lines.count);
+    }
+    nob_sb_free(lines);
+    memset(&lines, 0, sizeof(lines));
+    exit(0);
 }
 
 #endif // TUP_IMPLEMENTATION
