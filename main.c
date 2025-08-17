@@ -1,9 +1,10 @@
+#define TUP_IMPLEMENTATION
 #include "tup0.h"
 
 int main(int argc, char* const *argv)
 {
     if (argc == 1) {
-        command_dispatcher();
+        tup_command_dispatcher();
     } else if (argc == 2) {
         if (!nob_read_entire_file(argv[1], &lines)) {
             nob_log(NOB_ERROR, "Could not read the file: %s", argv[1]);
