@@ -38,9 +38,8 @@ void tup_quit(void);
 void tup_command_dispatcher(void)
 {
     char *command = (char *)calloc(NOB_DA_INIT_CAP, sizeof(char));
-    if (!command) {
-        NOB_ASSERT(command != NULL && "Buy more RAM lol!!!");
-    }
+    if (!command) NOB_ASSERT(command == NULL && "Buy more RAM lol!!!");
+
     while (1) {
         tup_help(help_Level);
 
@@ -120,7 +119,17 @@ void tup_check_desperation_level(void)
 
 void tup_insert(void)
 {
-    NOB_TODO("tup_insert");
+    char *line = (char *)calloc(NOB_DA_INIT_CAP, sizeof(char));
+    if (!line) NOB_ASSERT(line == NULL && "Buy more RAM lol!!!");
+
+    do {
+        line = fgets(line, NOB_DA_INIT_CAP, stdin);
+        if (!line) {
+            NOB_ASSERT(line == NULL && "Could not read the line, sorry :(");
+        }
+        nob_sb_appendf(&lines, "%s", line);
+    } while (strnstr(line, ".", 1) == NULL);
+    tup_command_dispatcher();
 }
 void tup_append(void)
 {
