@@ -10,14 +10,18 @@ This is meant to be a super simple text editor with a limited command subset. In
     [x] be as SIMPLE as possible.
     [x] commands similar to VIM.
     [x] use buffer (arraylist).
-    [] ":h"                     - help.
-    [] ":i"                     - insert.
-    [] ":a"                     - append.
-    [] ":w [filename]"          - write.
+    [x] ":h"                     - help.
+    [x] ":i"                     - insert.
+    [x] ":a"                     - append.
+    [x] ":w [filename]"          - write.
     [] ":d[linenumber]"         - delete line.
     [] ":ex"                    - explore current directory (?)
-    [] ":q"                     - quit.
+    [x] ":q"                     - quit.
     TODO:                       ...
+
+## FIXES:
+    [] fix write (file name and '.' when inserting).
+    [] improve command interpretation.
 
 ## CREDITS:
 nob.h [https://github.com/tsoding/nob.h](https://github.com/tsoding/nob.h)
