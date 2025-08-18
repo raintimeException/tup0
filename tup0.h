@@ -25,7 +25,6 @@ typedef enum {
 
 Help_Level help_Level = MIN;
 static int desperation_level = 0;
-
 static unsigned long long value = 1;
 
 void tup_command_dispatcher(void);
@@ -37,10 +36,10 @@ void tup_delete(void);
 void tup_write(const char *path);
 void tup_quit(void);
 
-
 #ifdef TUP_IMPLEMENTATION
 void tup_command_dispatcher(void)
 {
+    int i = 0;
     char *command = (char *)calloc(UNIVERSAL_SIZE, 0);
     if (!command) assert(command != NULL);
 
@@ -48,8 +47,10 @@ void tup_command_dispatcher(void)
         if (!fgets(command, UNIVERSAL_SIZE, stdin)) {
             fprintf(stderr, "Could not read the command: %s", command);
         }
-        if (strnstr(command, ":", 1)) {
-            char cmd = command[1]; // TODO: change this for 'ex' and commands len > 1
+        ++i;
+        assert(i == 1);
+        if (strnstr(command, ":", i)) {
+            char cmd = command[i];
             switch (cmd) {
                 case 'h': {
                     tup_help(help_Level);
@@ -61,11 +62,7 @@ void tup_command_dispatcher(void)
                     tup_append();
                 }; break;
                 case 'w': {
-                    char *path = (char *)calloc(UNIVERSAL_SIZE, 0);
-                    if (!path) assert(path != NULL);
-                    if (!fgets(path, UNIVERSAL_SIZE*sizeof(char), stdin)) {
-                        fprintf(stderr, "Could not read the filename: %s", path);
-                    }
+                    char * path = strtok(&command[++i], " ");
                     path[strcspn(path, "\n")] = '\0';
                     tup_write(path);
                 }; break;
@@ -81,6 +78,7 @@ void tup_command_dispatcher(void)
             };
         }
         memset(command, 0, UNIVERSAL_SIZE);
+        i = 0;
     }
 }
 
@@ -183,5 +181,6 @@ void tup_quit(void)
     shfree(hsh);
     exit(0);
 }
+
 
 #endif // TUP_IMPLEMENTATION
