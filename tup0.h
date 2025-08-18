@@ -5,8 +5,8 @@
 #include "stb_ds.h"
 
 typedef struct {
-    unsigned long long key;
-    char *value; // TODO: create a structure for line_value, with "start" and "end"
+    char *key;
+    int value;
 } Hsh_t;
 
 Hsh_t *hsh = NULL;
@@ -26,7 +26,7 @@ typedef enum {
 Help_Level help_Level = MIN;
 static int desperation_level = 0;
 
-static unsigned long long key = 0;
+static unsigned long long value = 1;
 
 void tup_command_dispatcher(void);
 void tup_help(Help_Level help_Level);
@@ -63,9 +63,10 @@ void tup_command_dispatcher(void)
                 case 'w': {
                     char *path = (char *)calloc(UNIVERSAL_SIZE, 0);
                     if (!path) assert(path != NULL);
-                    if (!fgets(path, UNIVERSAL_SIZE, stdin)) {
+                    if (!fgets(path, UNIVERSAL_SIZE*sizeof(char), stdin)) {
                         fprintf(stderr, "Could not read the filename: %s", path);
                     }
+                    path[strcspn(path, "\n")] = '\0';
                     tup_write(path);
                 }; break;
                 case 'd': {
@@ -75,7 +76,7 @@ void tup_command_dispatcher(void)
                     tup_quit();
                 }; break;
                 default: {
-                    printf("?: %s", command);
+                    fprintf(stdout, "?: %s", command);
                 };
             };
         }
@@ -88,10 +89,11 @@ void tup_help(Help_Level help_Level)
     tup_check_desperation_level();
     switch (help_Level) {
     case MIN: {
-        printf(":[command]\n");
+        fprintf(stdout, ":[command]\n");
     } break;
     case MAX: {
-    printf(PROMPT_SIGN":[command] [filename]                                \n\
+    fprintf(stdout,
+    PROMPT_SIGN":[command] [filename]                                       \n\
     :h                     - help.                                          \n\
     :i                     - insert.                                        \n\
     :a                     - append.                                        \n\
@@ -104,12 +106,12 @@ void tup_help(Help_Level help_Level)
     \n");
     } break;
     case EXTREME: {
-        printf(PROMPT_SIGN": are you stupid?\n");
+        fprintf(stdout, PROMPT_SIGN": are you stupid?\n");
     } break;
     default:
         TUP_UNREACHABLE("tup_help");
     };
-    printf("*");
+    fprintf(stdout, "*");
 }
 
 void tup_check_desperation_level(void)
@@ -132,8 +134,7 @@ void tup_insert(void)
     do {
         line = fgets(line, UNIVERSAL_SIZE, stdin);
         if (!line) assert(line != NULL);
-        fprintf(stdout, "info: %s was appended\n", line);
-        hmput(hsh, key++, line);
+        shput(hsh, strdup(line), value++);
     } while (strnstr(line, ".", 1) == NULL);
     tup_command_dispatcher();
 }
@@ -151,14 +152,21 @@ void tup_delete(void)
 
 void tup_write(const char *path)
 {
-    TUP_UNREACHABLE("tup_write");
-    hmfree(hsh);
+    FILE *f_strem = fopen(path, "w");
+    assert(f_strem != NULL);
+
+    for (int i = 0; i < shlen(hsh); ++i) {
+        char *line = hsh[i].key;
+        printf("%s ", line);
+        assert(fwrite(line, sizeof(char), strlen(line), f_strem) != 0);
+    }
+    shfree(hsh);
     fprintf(stdout, "Buffer was written into: %s", path);
 }
 
 void tup_quit(void)
 {
-    int hm_len = hmlen(hsh);
+    int hm_len = shlen(hsh);
     if (hm_len > 0) {
         printf("are you sure?(y/n), the buffer is not empty: %d\n", hm_len);
         char response = fgetc(stdin);
@@ -172,7 +180,7 @@ void tup_quit(void)
     } else {
         printf("lines in the buffer: %d\n", hm_len);
     }
-    hmfree(hsh);
+    shfree(hsh);
     exit(0);
 }
 
