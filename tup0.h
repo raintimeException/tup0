@@ -4,15 +4,13 @@
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
 
-//
-// DEPs stuff
-//
+typedef struct {
+    unsigned long long key;
+    char *value; // TODO: create a structure for line_value, with "start" and "end"
+} Hsh_t;
 
-char **lines = NULL;
+Hsh_t *hsh = NULL;
 
-//
-// APPs stuff
-//
 #define TUP_UNREACHABLE(message) do { fprintf(stderr, "%s:%d: UNREACHABLE: %s\n", __FILE__, __LINE__, message); abort(); } while(0)
 #define TUP_TODO(message) do { fprintf(stderr, "%s:%d: TODO: %s\n", __FILE__, __LINE__, message); abort(); } while(0)
 
@@ -27,6 +25,8 @@ typedef enum {
 
 Help_Level help_Level = MIN;
 static int desperation_level = 0;
+
+static unsigned long long key = 0;
 
 void tup_command_dispatcher(void);
 void tup_help(Help_Level help_Level);
@@ -133,7 +133,7 @@ void tup_insert(void)
         line = fgets(line, UNIVERSAL_SIZE, stdin);
         if (!line) assert(line != NULL);
         fprintf(stdout, "info: %s was appended\n", line);
-        arrput(lines, line);
+        hmput(hsh, key++, line);
     } while (strnstr(line, ".", 1) == NULL);
     tup_command_dispatcher();
 }
@@ -152,15 +152,15 @@ void tup_delete(void)
 void tup_write(const char *path)
 {
     TUP_UNREACHABLE("tup_write");
-    arrfree(lines);
+    hmfree(hsh);
     fprintf(stdout, "Buffer was written into: %s", path);
 }
 
 void tup_quit(void)
 {
-    int arr_len = arrlen(lines);
-    if (arr_len > 0) {
-        printf("are you sure?(y/n), the buffer is not empty: %d\n", arr_len);
+    int hm_len = hmlen(hsh);
+    if (hm_len > 0) {
+        printf("are you sure?(y/n), the buffer is not empty: %d\n", hm_len);
         char response = fgetc(stdin);
         printf("fgets: %c\n", response);
         if (response == 'y' || response == 'Y') {
@@ -170,9 +170,9 @@ void tup_quit(void)
             tup_command_dispatcher();
         }
     } else {
-        printf("lines in the buffer: %d\n", arr_len);
+        printf("lines in the buffer: %d\n", hm_len);
     }
-    arrfree(lines);
+    hmfree(hsh);
     exit(0);
 }
 
