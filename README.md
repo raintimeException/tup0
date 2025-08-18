@@ -26,3 +26,4 @@ This is meant to be a super simple text editor with a limited command subset. In
 
 ## CREDITS:
 nob.h [https://github.com/tsoding/nob.h](https://github.com/tsoding/nob.h)
+stb   [https://github.com/nothings/stb](https://github.com/nothings/stb)

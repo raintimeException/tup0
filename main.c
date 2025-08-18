@@ -3,14 +3,15 @@
 
 int main(int argc, char* const *argv)
 {
+    (void)argc;
+    (void)argv;
+    tup_help(help_Level);
     if (argc == 1) {
         tup_command_dispatcher();
-    } else if (argc == 2) {
-        if (!nob_read_entire_file(argv[1], &lines)) {
-            nob_log(NOB_ERROR, "Could not read the file: %s", argv[1]);
-        }
+    } else if (argc > 1) {
+        // TODO: read different files and give the possibility of selection between them
     } else {
-        NOB_TODO("Implement selection of different files");
+        TUP_UNREACHABLE("main");
     }
     return 0;
 }
