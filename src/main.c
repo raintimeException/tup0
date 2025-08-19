@@ -13,5 +13,6 @@ int main(int argc, char* const *argv)
     } else {
         TUP_UNREACHABLE("main");
     }
+
     return 0;
 }

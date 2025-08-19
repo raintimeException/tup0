@@ -1,3 +1,9 @@
+// TODO:
+//      select line, and rewrite it or delete it.
+//      show lines for example: :1,$p
+//      show lines for example: :1,3p
+//      print lines index (experimental)
+
 #include <stdlib.h>
 #include <stdio.h>
 
