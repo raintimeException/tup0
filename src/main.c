@@ -3,13 +3,11 @@
 
 int main(int argc, char* const *argv)
 {
-    (void)argc;
-    (void)argv;
     tup_help(help_Level);
     if (argc == 1) {
         tup_command_dispatcher();
-    } else if (argc > 1) {
-        // TODO: read different files and give the possibility of selection between them
+    } else if (argc == 2) {
+        tup_read_file(*++argv);
     } else {
         TUP_UNREACHABLE("main");
     }

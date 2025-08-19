@@ -41,6 +41,8 @@ void tup_append(void);
 void tup_delete(void);
 void tup_write(const char *path);
 void tup_quit(void);
+char *tup_read_file(const char *path);
+int tup_load_content(const char *file_content, unsigned long long file_size);
 
 #ifdef TUP_IMPLEMENTATION
 void tup_command_dispatcher(void)
@@ -174,19 +176,61 @@ void tup_quit(void)
     if (hm_len > 0) {
         printf("are you sure?(y/n), the buffer is not empty: %d\n", hm_len);
         char response = fgetc(stdin);
-        printf("fgets: %c\n", response);
         if (response == 'y' || response == 'Y') {
-            printf("ok.\n");
+            fprintf(stdout, "ok.\n");
             exit(1);
         } else {
             tup_command_dispatcher();
         }
     } else {
-        printf("lines in the buffer: %d\n", hm_len);
+        fprintf(stdout, "lines in the buffer: %d\n", hm_len);
     }
     shfree(hsh);
     exit(0);
 }
 
+// TODO: refactor
+char *tup_read_file(const char *path)
+{
+    FILE *file = fopen(path, "ab+");
+    assert(file != NULL);
+
+    assert(fseek(file, 0, SEEK_END) != -1);
+    unsigned long long file_size = ftell(file) + 1;
+    assert(fseek(file, 0, SEEK_SET) != -1);
+
+    char *file_content = (char *)calloc(file_size, sizeof(char));
+
+    fread(file_content, sizeof(char), file_size, file);
+
+    assert(tup_load_content(file_content, file_size) == 1);
+
+    fprintf(stdout, "Content from file %s has been loaded\n", path);
+    return file_content;
+}
+
+int tup_load_content(const char *file_content, unsigned long long file_size)
+{
+    (void)file_size;
+    char *line = (char *)calloc(UNIVERSAL_SIZE, 0);
+    if (!line) assert(line != NULL);
+
+    unsigned long long i, j;
+    for (i = 0, j = 0; i < file_size; ++i, ++j) {
+        line[j] = file_content[i];
+        if (line[j] == 10) {
+            line[++j] = '\0';
+            shput(hsh, strdup(line), value++);
+            j = -1;
+        }
+    }
+
+    // TODO: useme in other function
+    for (int i = 0; i < shlen(hsh); ++i) {
+        char *line = hsh[i].key;
+        (void)line;
+    }
+    return 1;
+}
 
 #endif // TUP_IMPLEMENTATION
