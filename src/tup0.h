@@ -49,7 +49,7 @@ void tup_command_dispatcher(void)
 {
     int i = 0;
     char *command = (char *)calloc(UNIVERSAL_SIZE, 0);
-    if (!command) assert(command != NULL);
+    assert(command != NULL);
 
     while (1) {
         if (!fgets(command, UNIVERSAL_SIZE, stdin)) {
@@ -135,11 +135,11 @@ void tup_check_desperation_level(void)
 void tup_insert(void)
 {
     char *line = (char *)calloc(UNIVERSAL_SIZE, 0);
-    if (!line) assert(line != NULL);
+    assert(line != NULL);
 
     do {
         line = fgets(line, UNIVERSAL_SIZE, stdin);
-        if (!line) assert(line != NULL);
+        assert(line != NULL);
         shput(hsh, strdup(line), value++);
     } while (strnstr(line, ".", 1) == NULL);
     tup_command_dispatcher();
@@ -200,6 +200,7 @@ char *tup_read_file(const char *path)
     assert(fseek(file, 0, SEEK_SET) != -1);
 
     char *file_content = (char *)calloc(file_size, sizeof(char));
+    assert(file_content != NULL);
 
     fread(file_content, sizeof(char), file_size, file);
 
@@ -213,7 +214,7 @@ int tup_load_content(const char *file_content, unsigned long long file_size)
 {
     (void)file_size;
     char *line = (char *)calloc(UNIVERSAL_SIZE, 0);
-    if (!line) assert(line != NULL);
+    assert(line != NULL);
 
     unsigned long long i, j;
     for (i = 0, j = 0; i < file_size; ++i, ++j) {
