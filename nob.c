@@ -47,6 +47,7 @@ int main(int argc, char **argv)
     // Let's append the command line arguments
 #if !defined(_MSC_VER)
     // On POSIX
+    // TODO: change the optimization level for release
     nob_cmd_append(&cmd, "cc", "-Wall", "-Wextra", "-O0", "-o", BUILD_FOLDER"tup0", SRC_FOLDER"main.c");
 #else
     // On MSVC

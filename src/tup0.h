@@ -1,9 +1,3 @@
-// TODO:
-//      select line, and rewrite it or delete it.
-//      show lines for example: :1,$p
-//      show lines for example: :1,3p
-//      print lines index (experimental)
-
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -11,11 +5,11 @@
 #include "stb_ds.h"
 
 typedef struct {
-    char *key;
-    int value;
-} Hsh_t;
+    unsigned long long idx;
+    char *cntnt;
+} Item_t;
 
-Hsh_t *hsh = NULL;
+Item_t **arr_items = NULL;
 
 #define TUP_UNREACHABLE(message) do { fprintf(stderr, "%s:%d: UNREACHABLE: %s\n", __FILE__, __LINE__, message); abort(); } while(0)
 #define TUP_TODO(message) do { fprintf(stderr, "%s:%d: TODO: %s\n", __FILE__, __LINE__, message); abort(); } while(0)
@@ -31,14 +25,17 @@ typedef enum {
 
 Help_Level help_Level = MIN;
 static int desperation_level = 0;
-static unsigned long long value = 1;
+static unsigned long long idx = 1;
+static unsigned long long curr_idx = 1;
+static const char *default_path = "unnamed_file";
 
 void tup_command_dispatcher(void);
 void tup_help(Help_Level help_Level);
 void tup_check_desperation_level(void);
 void tup_insert(void);
+void tup_insert_into_the_line(int itx);
 void tup_append(void);
-void tup_delete(void);
+void tup_delete(unsigned long long curr_idx);
 void tup_write(const char *path);
 void tup_quit(void);
 char *tup_read_file(const char *path);
@@ -70,12 +67,15 @@ void tup_command_dispatcher(void)
                     tup_append();
                 }; break;
                 case 'w': {
-                    char * path = strtok(&command[++i], " ");
+                    char* path = strtok(&command[++i], " ");
                     path[strcspn(path, "\n")] = '\0';
+                    if (strlen(path) == 0) {
+                        path = (char *)default_path;
+                    }
                     tup_write(path);
                 }; break;
                 case 'd': {
-                    tup_delete();
+                    tup_delete(curr_idx);
                 }; break;
                 case 'q': {
                     tup_quit();
@@ -84,6 +84,9 @@ void tup_command_dispatcher(void)
                     fprintf(stdout, "?: %s", command);
                 };
             };
+        } else if ((curr_idx = atoi(command)) > 0) { 
+            printf("it is a number: %llu\n", curr_idx);
+            tup_insert_into_the_line(curr_idx);
         }
         memset(command, 0, UNIVERSAL_SIZE);
         i = 0;
@@ -137,13 +140,44 @@ void tup_insert(void)
     char *line = (char *)calloc(UNIVERSAL_SIZE, 0);
     assert(line != NULL);
 
+    Item_t *itm = NULL;
+
     do {
         line = fgets(line, UNIVERSAL_SIZE, stdin);
         assert(line != NULL);
-        shput(hsh, strdup(line), value++);
+
+        itm = (Item_t *)malloc(sizeof(Item_t));
+        assert(itm!= NULL);
+        itm->idx   = idx++;
+        itm->cntnt = strdup(line);
+
+        arrput(arr_items, itm);
     } while (strnstr(line, ".", 1) == NULL);
     tup_command_dispatcher();
 }
+
+void tup_insert_into_the_line(int curr_idx)
+{
+    char *line = (char *)calloc(UNIVERSAL_SIZE, 0);
+    assert(line != NULL);
+
+    Item_t *itm = NULL;
+
+    do {
+        line = fgets(line, UNIVERSAL_SIZE, stdin);
+        assert(line != NULL);
+
+        itm = (Item_t *)malloc(sizeof(Item_t));
+        assert(itm!= NULL);
+
+        itm->idx   = curr_idx;
+        itm->cntnt = strdup(line);
+
+        arrins(arr_items, curr_idx, itm);
+    } while (strnstr(line, ".", 1) == NULL);
+    tup_command_dispatcher();
+}
+
 
 void tup_append(void)
 {
@@ -151,9 +185,10 @@ void tup_append(void)
     tup_insert();
 }
 
-void tup_delete(void)
+void tup_delete(unsigned long long curr_idx)
 {
-    TUP_TODO("tup_delete");
+    arrdel(arr_items, curr_idx);
+    printf("line: [%llu] has been deleted\n", curr_idx);
 }
 
 void tup_write(const char *path)
@@ -161,18 +196,18 @@ void tup_write(const char *path)
     FILE *f_strem = fopen(path, "w");
     assert(f_strem != NULL);
 
-    for (int i = 0; i < shlen(hsh); ++i) {
-        char *line = hsh[i].key;
+    for (int i = 0; i < arrlen(arr_items); ++i) {
+        char *line = arr_items[i]->cntnt;
         printf("%s ", line);
         assert(fwrite(line, sizeof(char), strlen(line), f_strem) != 0);
     }
-    shfree(hsh);
-    fprintf(stdout, "Buffer was written into: %s", path);
+    arrfree(arr_items);
+    fprintf(stdout, "Buffer was written into: %s\n", path);
 }
 
 void tup_quit(void)
 {
-    int hm_len = shlen(hsh);
+    int hm_len = arrlen(arr_items);
     if (hm_len > 0) {
         printf("are you sure?(y/n), the buffer is not empty: %d\n", hm_len);
         char response = fgetc(stdin);
@@ -185,11 +220,10 @@ void tup_quit(void)
     } else {
         fprintf(stdout, "lines in the buffer: %d\n", hm_len);
     }
-    shfree(hsh);
+    arrfree(arr_items);
     exit(0);
 }
 
-// TODO: refactor
 char *tup_read_file(const char *path)
 {
     FILE *file = fopen(path, "ab+");
@@ -221,16 +255,19 @@ int tup_load_content(const char *file_content, unsigned long long file_size)
         line[j] = file_content[i];
         if (line[j] == 10) {
             line[++j] = '\0';
-            shput(hsh, strdup(line), value++);
+
+            Item_t *itm = (Item_t *)malloc(sizeof(Item_t));
+            assert(itm!= NULL);
+
+            itm->idx = idx++;
+            itm->cntnt = line;
+
+            arrput(arr_items, itm);
+
             j = -1;
         }
     }
 
-    // TODO: useme in other function
-    for (int i = 0; i < shlen(hsh); ++i) {
-        char *line = hsh[i].key;
-        (void)line;
-    }
     return 1;
 }
 
