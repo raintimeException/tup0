@@ -27,7 +27,7 @@ Help_Level help_Level = MIN;
 static int desperation_level = 0;
 static unsigned long long idx = 1;
 static unsigned long long curr_idx = 1;
-static const char *default_path = "unnamed_file";
+static const char *default_path = "default_file";
 
 void tup_command_dispatcher(void);
 void tup_help(Help_Level help_Level);
@@ -86,7 +86,6 @@ void tup_command_dispatcher(void)
             };
         } else if ((curr_idx = atoi(command)) > 0) { 
             printf("it is a number: %llu\n", curr_idx);
-            tup_insert_into_the_line(curr_idx);
         }
         memset(command, 0, UNIVERSAL_SIZE);
         i = 0;
