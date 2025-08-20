@@ -5,7 +5,7 @@
 #include "stb_ds.h"
 
 #define PROMPT_SIGN     "*"
-#define UNIVERSAL_SIZE  512
+#define UNIVERSAL_SIZE  4096
 #define DEFAULT_PATH    "default_path"
 #define PEDANTIC
 #undef  PEDANTIC
@@ -146,7 +146,7 @@ void tup_insert(Editor_t *editor)
     assert(data != NULL);
 
     Line_t *line = NULL;
-    do {
+    while (1) {
         data = fgets(data, UNIVERSAL_SIZE, stdin);
         assert(data != NULL);
 
@@ -157,9 +157,18 @@ void tup_insert(Editor_t *editor)
         line->start = 0;
         line->end = strlen(data);
 
+        if (strnstr(line->data, ".", 1) != NULL) {
+            free(line);
+            goto exit;
+        }
         arrput(editor->lines, line);
+        for (int i = 0; i < arrlen(editor->lines); ++i) {
+            printf("%s", (editor->lines)[i]->data);
+        }
         editor->curs_idx = arrlen(editor->lines);
-    } while (strnstr(line->data, ".", 1) == NULL);
+        line = NULL;
+    };
+exit:
     tup_command_dispatcher(editor);
 }
 
@@ -170,7 +179,7 @@ void tup_insert_into_curs_line(Editor_t *editor)
     assert(data != NULL);
 
     Line_t *line = NULL;
-    do {
+    while (1) {
         data = fgets(data, UNIVERSAL_SIZE, stdin);
         assert(data != NULL);
 
@@ -181,8 +190,13 @@ void tup_insert_into_curs_line(Editor_t *editor)
         line->start = 0;
         line->end = strlen(data);
 
+        if (strnstr(line->data, ".", 1) != NULL) {
+            free(line);
+            goto exit;
+        }
         arrins(editor->lines, editor->curs_idx, line);
-    } while (strnstr(line->data, ".", 1) == NULL);
+    };
+exit:
     tup_command_dispatcher(editor);
 }
 
@@ -215,11 +229,15 @@ void tup_write_out(Editor_t *editor)
     FILE *f_strem = fopen(editor->f_out, "w");
     assert(f_strem != NULL);
 
+    char *data = (char *)calloc(UNIVERSAL_SIZE, 0);
+    assert(data != NULL);
+
     for (int i = 0; i < arrlen(editor->lines); ++i) {
-        char *data = editor->lines[i]->data;
+        data = editor->lines[i]->data;
         fprintf(stdout, "%s", data);
         assert(fwrite(data, sizeof(char), strlen(data), f_strem) != 0);
     }
+    free(data);
     arrfree(editor->lines);
     fprintf(stdout, "[INFO]: Buffer was written into: %s\n", editor->f_out);
 }
