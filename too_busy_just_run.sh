@@ -8,4 +8,4 @@ cc -o nob nob.c
 
 echo "An executable is located in the 'build/' folder :)"
 
-./build/tup0  file
+./build/tup0

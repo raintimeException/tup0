@@ -4,91 +4,97 @@
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
 
-typedef struct {
-    unsigned long long idx;
-    char *cntnt;
-} Item_t;
-
-Item_t **arr_items = NULL;
-
-#define TUP_UNREACHABLE(message) do { fprintf(stderr, "%s:%d: UNREACHABLE: %s\n", __FILE__, __LINE__, message); abort(); } while(0)
-#define TUP_TODO(message) do { fprintf(stderr, "%s:%d: TODO: %s\n", __FILE__, __LINE__, message); abort(); } while(0)
-
-#define PROMPT_SIGN    "*"
+#define PROMPT_SIGN     "*"
 #define UNIVERSAL_SIZE  512
+#define DEFAULT_PATH    "default_path"
+#define PEDANTIC
+#undef  PEDANTIC
+
+#define TUP_TODO(message) do { fprintf(stderr, "%s:%d: TODO: %s\n", __FILE__, __LINE__, message); abort(); } while(0)
+#define TUP_UNREACHABLE(message) do { fprintf(stderr, "%s:%d: UNREACHABLE: %s\n", __FILE__, __LINE__, message); abort(); } while(0)
+
+typedef struct {
+    char *data;
+    int start;
+    int end;
+    int idx;
+} Line_t;
+
+typedef struct {
+    const char *f_in;
+    const char *f_out;
+
+    Line_t **lines;
+
+    int curs_idx;
+    char command[UNIVERSAL_SIZE];
+} Editor_t;
 
 typedef enum {
     MIN,
     MAX,
     EXTREME,
 } Help_Level;
-
 Help_Level help_Level = MIN;
 static int desperation_level = 0;
-static unsigned long long idx = 1;
-static unsigned long long curr_idx = 1;
-static const char *default_path = "default_file";
 
-void tup_command_dispatcher(void);
+static const char *exit_message = "GOOD LUCK MATE";
+
+void tup_command_dispatcher(Editor_t *editor);
 void tup_help(Help_Level help_Level);
 void tup_check_desperation_level(void);
-void tup_insert(void);
-void tup_insert_into_the_line(int itx);
-void tup_append(void);
-void tup_delete(unsigned long long curr_idx);
-void tup_write(const char *path);
-void tup_quit(void);
-char *tup_read_file(const char *path);
-int tup_load_content(const char *file_content, unsigned long long file_size);
+void tup_insert(Editor_t *editor);
+void tup_insert_into_curs_line(Editor_t *editor);
+void tup_append_line(Editor_t *editor);
+void tup_delete_line(Editor_t *editor);
+int _tup_editor_set_f_out(Editor_t *editor, char *path);
+void tup_write_out(Editor_t *editor);
+int _tup_editor_set_f_in(Editor_t *editor, char *path);
+int _tup_editor_load_content(Editor_t *editor, const char *content, int content_size);
+void tup_read_in(Editor_t *editor);
+void tup_quit(Editor_t *editor);
+
 
 #ifdef TUP_IMPLEMENTATION
-void tup_command_dispatcher(void)
-{
-    int i = 0;
-    char *command = (char *)calloc(UNIVERSAL_SIZE, 0);
-    assert(command != NULL);
 
+void tup_command_dispatcher(Editor_t *editor)
+{
     while (1) {
-        if (!fgets(command, UNIVERSAL_SIZE, stdin)) {
-            fprintf(stderr, "Could not read the command: %s", command);
+        if (!fgets(editor->command, UNIVERSAL_SIZE, stdin)) {
+            fprintf(stderr, "Could not read the command: %s", editor->command);
         }
-        ++i;
-        assert(i == 1);
-        if (strnstr(command, ":", i)) {
-            char cmd = command[i];
+        if (strnstr(editor->command, ":", 1)) {
+            char cmd = (editor->command)[1];
             switch (cmd) {
                 case 'h': {
                     tup_help(help_Level);
                 }; break;
                 case 'i': {
-                    tup_insert();
+                    tup_insert(editor);
                 }; break;
                 case 'a': {
-                    tup_append();
+                    tup_append_line(editor);
                 }; break;
                 case 'w': {
-                    char* path = strtok(&command[++i], " ");
-                    path[strcspn(path, "\n")] = '\0';
-                    if (strlen(path) == 0) {
-                        path = (char *)default_path;
-                    }
-                    tup_write(path);
+                    char *command = &(editor->command)[3];
+                    char *path = strtok(command, " ");
+                    _tup_editor_set_f_out(editor, path);
+                    tup_write_out(editor);
                 }; break;
                 case 'd': {
-                    tup_delete(curr_idx);
+                    tup_delete_line(editor);
                 }; break;
                 case 'q': {
-                    tup_quit();
+                    tup_quit(editor);
                 }; break;
                 default: {
-                    fprintf(stdout, "?: %s", command);
+                    fprintf(stdout, "?: %s", editor->command);
                 };
             };
-        } else if ((curr_idx = atoi(command)) > 0) { 
-            printf("it is a number: %llu\n", curr_idx);
+        } else if ((editor->curs_idx = atoi(editor->command)) > 0) { 
+            fprintf(stdout, "curs_idx %d, content: %s\n", editor->curs_idx, editor->lines[editor->curs_idx - 1]->data);
         }
-        memset(command, 0, UNIVERSAL_SIZE);
-        i = 0;
+        memset(editor->command, 0, UNIVERSAL_SIZE);
     }
 }
 
@@ -119,7 +125,7 @@ void tup_help(Help_Level help_Level)
     default:
         TUP_UNREACHABLE("tup_help");
     };
-    fprintf(stdout, "*");
+    fprintf(stdout, PROMPT_SIGN);
 }
 
 void tup_check_desperation_level(void)
@@ -134,139 +140,166 @@ void tup_check_desperation_level(void)
     }
 }
 
-void tup_insert(void)
+void tup_insert(Editor_t *editor)
 {
-    char *line = (char *)calloc(UNIVERSAL_SIZE, 0);
-    assert(line != NULL);
+    char *data = (char *)calloc(UNIVERSAL_SIZE, 0);
+    assert(data != NULL);
 
-    Item_t *itm = NULL;
-
+    Line_t *line = NULL;
     do {
-        line = fgets(line, UNIVERSAL_SIZE, stdin);
+        data = fgets(data, UNIVERSAL_SIZE, stdin);
+        assert(data != NULL);
+
+        line = (Line_t *)malloc(sizeof(Line_t));
         assert(line != NULL);
 
-        itm = (Item_t *)malloc(sizeof(Item_t));
-        assert(itm!= NULL);
-        itm->idx   = idx++;
-        itm->cntnt = strdup(line);
+        line->data = strdup(data);
+        line->start = 0;
+        line->end = strlen(data);
 
-        arrput(arr_items, itm);
-    } while (strnstr(line, ".", 1) == NULL);
-    tup_command_dispatcher();
+        arrput(editor->lines, line);
+        editor->curs_idx = arrlen(editor->lines);
+    } while (strnstr(line->data, ".", 1) == NULL);
+    tup_command_dispatcher(editor);
 }
 
-void tup_insert_into_the_line(int curr_idx)
+
+void tup_insert_into_curs_line(Editor_t *editor)
 {
-    char *line = (char *)calloc(UNIVERSAL_SIZE, 0);
-    assert(line != NULL);
+    char *data = (char *)calloc(UNIVERSAL_SIZE, 0);
+    assert(data != NULL);
 
-    Item_t *itm = NULL;
-
+    Line_t *line = NULL;
     do {
-        line = fgets(line, UNIVERSAL_SIZE, stdin);
+        data = fgets(data, UNIVERSAL_SIZE, stdin);
+        assert(data != NULL);
+
+        line = (Line_t *)malloc(sizeof(Line_t));
         assert(line != NULL);
 
-        itm = (Item_t *)malloc(sizeof(Item_t));
-        assert(itm!= NULL);
+        line->data = strdup(data);
+        line->start = 0;
+        line->end = strlen(data);
 
-        itm->idx   = curr_idx;
-        itm->cntnt = strdup(line);
+        arrins(editor->lines, editor->curs_idx, line);
+    } while (strnstr(line->data, ".", 1) == NULL);
+    tup_command_dispatcher(editor);
+}
 
-        arrins(arr_items, curr_idx, itm);
-    } while (strnstr(line, ".", 1) == NULL);
-    tup_command_dispatcher();
+void tup_append_line(Editor_t *editor)
+{
+    // TODO: changeme
+    tup_insert(editor);
 }
 
 
-void tup_append(void)
+void tup_delete_line(Editor_t *editor)
 {
-    // TODO: implement this.
-    tup_insert();
+    arrdel(editor->lines, editor->curs_idx - 1);
+    fprintf(stdout, "[INFO]: line [%d] has been deleted\n", editor->curs_idx);
 }
 
-void tup_delete(unsigned long long curr_idx)
+int _tup_editor_set_f_out(Editor_t *editor, char *path)
 {
-    arrdel(arr_items, curr_idx);
-    printf("line: [%llu] has been deleted\n", curr_idx);
+    path[strcspn(path, "\n")] = '\0';
+    if (strlen(path) == 0) {
+        path = DEFAULT_PATH;
+    }
+
+    editor->f_out = path;
+    return 1;
 }
 
-void tup_write(const char *path)
+void tup_write_out(Editor_t *editor)
 {
-    FILE *f_strem = fopen(path, "w");
+    FILE *f_strem = fopen(editor->f_out, "w");
     assert(f_strem != NULL);
 
-    for (int i = 0; i < arrlen(arr_items); ++i) {
-        char *line = arr_items[i]->cntnt;
-        printf("%s ", line);
-        assert(fwrite(line, sizeof(char), strlen(line), f_strem) != 0);
+    for (int i = 0; i < arrlen(editor->lines); ++i) {
+        char *data = editor->lines[i]->data;
+        fprintf(stdout, "%s", data);
+        assert(fwrite(data, sizeof(char), strlen(data), f_strem) != 0);
     }
-    arrfree(arr_items);
-    fprintf(stdout, "Buffer was written into: %s\n", path);
+    arrfree(editor->lines);
+    fprintf(stdout, "[INFO]: Buffer was written into: %s\n", editor->f_out);
 }
 
-void tup_quit(void)
+void tup_quit(Editor_t *editor)
 {
-    int hm_len = arrlen(arr_items);
-    if (hm_len > 0) {
-        printf("are you sure?(y/n), the buffer is not empty: %d\n", hm_len);
+#ifdef PEDANTIC
+    int remain_inside = arrlen(editor->lines);
+    if (remain_inside > 0) {
+        fprintf("[WARN]: buffer is not empty: %d\n", hm_len);
+        fprintf("[WARN]: quit(y/n):\n");
         char response = fgetc(stdin);
         if (response == 'y' || response == 'Y') {
-            fprintf(stdout, "ok.\n");
+            fprintf(stdout, "[INFO]: ok.\n");
             exit(1);
         } else {
-            tup_command_dispatcher();
+            tup_command_dispatcher(editor);
         }
     } else {
-        fprintf(stdout, "lines in the buffer: %d\n", hm_len);
+        fprintf(stdout, "[INFO]: lines in the buffer: %d\n", hm_len);
     }
-    arrfree(arr_items);
+#else
+    arrfree(editor->lines);
     exit(0);
+#endif
+    fprintf(stdout, "[INFO]: %s\n", exit_message);
 }
 
-char *tup_read_file(const char *path)
+int _tup_editor_set_f_in(Editor_t *editor, char *path)
 {
-    FILE *file = fopen(path, "ab+");
+    editor->f_in = path;
+    printf("%s\n", editor->f_in);
+    printf("%s\n", path);
+    return 1;
+}
+
+void tup_read_in(Editor_t *editor)
+{
+    FILE *file = fopen(editor->f_in, "ab+");
     assert(file != NULL);
 
     assert(fseek(file, 0, SEEK_END) != -1);
-    unsigned long long file_size = ftell(file) + 1;
+    int content_size = ftell(file) + 1;
     assert(fseek(file, 0, SEEK_SET) != -1);
 
-    char *file_content = (char *)calloc(file_size, sizeof(char));
-    assert(file_content != NULL);
+    char *content = (char *)calloc(content_size, sizeof(char));
+    assert(content != NULL);
 
-    fread(file_content, sizeof(char), file_size, file);
+    fread(content, sizeof(char), content_size, file);
 
-    assert(tup_load_content(file_content, file_size) == 1);
-
-    fprintf(stdout, "Content from file %s has been loaded\n", path);
-    return file_content;
+    if (!_tup_editor_load_content(editor, content, content_size)) {
+        fprintf(stderr, "[ERROR]: Could not load content from file [%s] \n", editor->f_in);
+        exit(1);
+    }
+    fprintf(stdout, "[INFO]: Content from file [%s] has been loaded\n", editor->f_in);
 }
 
-int tup_load_content(const char *file_content, unsigned long long file_size)
+int _tup_editor_load_content(Editor_t *editor, const char *content, int content_size)
 {
-    (void)file_size;
-    char *line = (char *)calloc(UNIVERSAL_SIZE, 0);
-    assert(line != NULL);
+    char *data = (char *)calloc(UNIVERSAL_SIZE, 0);
+    assert(data != NULL);
 
-    unsigned long long i, j;
-    for (i = 0, j = 0; i < file_size; ++i, ++j) {
-        line[j] = file_content[i];
-        if (line[j] == 10) {
-            line[++j] = '\0';
+    Line_t *line = NULL;
+    int i, j;
+    for (i = 0, j = 0; i < content_size; ++i, ++j) {
+        data[j] = content[i];
+        if (data[j] == 10) {
+            data[++j] = '\0';
 
-            Item_t *itm = (Item_t *)malloc(sizeof(Item_t));
-            assert(itm!= NULL);
+            line = (Line_t *)malloc(sizeof(Line_t));
+            assert(line != NULL);
 
-            itm->idx = idx++;
-            itm->cntnt = line;
+            line->data = data;
+            line->start = 0;
+            line->end = strlen(data);
 
-            arrput(arr_items, itm);
-
+            arrput(editor->lines, line);
             j = -1;
         }
     }
-
     return 1;
 }
 
