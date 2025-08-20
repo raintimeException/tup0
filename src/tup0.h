@@ -5,7 +5,7 @@
 #include "stb_ds.h"
 
 #define PROMPT_SIGN     "*"
-#define UNIVERSAL_SIZE  4096
+#define UNIVERSAL_SIZE  8192
 #define DEFAULT_PATH    "default_path"
 #define PEDANTIC
 #undef  PEDANTIC
@@ -41,7 +41,7 @@ static int desperation_level = 0;
 static const char *exit_message = "GOOD LUCK MATE";
 
 void tup_command_dispatcher(Editor_t *editor);
-void tup_help(Help_Level help_Level);
+void tup_help(void);
 void tup_check_desperation_level(void);
 void tup_insert(Editor_t *editor);
 void tup_insert_into_curs_line(Editor_t *editor);
@@ -67,7 +67,7 @@ void tup_command_dispatcher(Editor_t *editor)
             char cmd = (editor->command)[1];
             switch (cmd) {
                 case 'h': {
-                    tup_help(help_Level);
+                    tup_help();
                 }; break;
                 case 'i': {
                     tup_insert(editor);
@@ -93,12 +93,14 @@ void tup_command_dispatcher(Editor_t *editor)
             };
         } else if ((editor->curs_idx = atoi(editor->command)) > 0) { 
             fprintf(stdout, "curs_idx %d, content: %s\n", editor->curs_idx, editor->lines[editor->curs_idx - 1]->data);
+        } else {
+            tup_help();
         }
         memset(editor->command, 0, UNIVERSAL_SIZE);
     }
 }
 
-void tup_help(Help_Level help_Level)
+void tup_help(void)
 {
     tup_check_desperation_level();
     switch (help_Level) {
@@ -142,11 +144,11 @@ void tup_check_desperation_level(void)
 
 void tup_insert(Editor_t *editor)
 {
-    char *data = (char *)calloc(UNIVERSAL_SIZE, 0);
-    assert(data != NULL);
-
+    char *data = NULL;
     Line_t *line = NULL;
+
     while (1) {
+        data = (char *)calloc(UNIVERSAL_SIZE, 0);
         data = fgets(data, UNIVERSAL_SIZE, stdin);
         assert(data != NULL);
 
@@ -167,19 +169,19 @@ void tup_insert(Editor_t *editor)
         }
         editor->curs_idx = arrlen(editor->lines);
         line = NULL;
+        data = NULL;
     };
 exit:
     tup_command_dispatcher(editor);
 }
 
-
 void tup_insert_into_curs_line(Editor_t *editor)
 {
-    char *data = (char *)calloc(UNIVERSAL_SIZE, 0);
-    assert(data != NULL);
-
+    char *data = NULL;
     Line_t *line = NULL;
+
     while (1) {
+        data = (char *)calloc(UNIVERSAL_SIZE, 0);
         data = fgets(data, UNIVERSAL_SIZE, stdin);
         assert(data != NULL);
 

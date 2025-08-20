@@ -5,7 +5,7 @@ int main(int argc, char* const *argv)
 {
     Editor_t editor = {0};
 
-    tup_help(help_Level);
+    tup_help();
 
     if (argc == 1) {
         tup_command_dispatcher(&editor);
