@@ -46,6 +46,7 @@ void tup_check_desperation_level(void);
 void tup_insert(Editor_t *editor);
 void tup_insert_into_curs_line(Editor_t *editor);
 void tup_append_line(Editor_t *editor);
+char *_tup_remove_new_line_char(char *data);
 void tup_delete_line(Editor_t *editor);
 int _tup_editor_set_f_out(Editor_t *editor, char *path);
 void tup_write_out(Editor_t *editor);
@@ -170,7 +171,7 @@ void tup_insert(Editor_t *editor)
         editor->curs_idx = arrlen(editor->lines);
         line = NULL;
         data = NULL;
-    };
+    }
 exit:
     tup_command_dispatcher(editor);
 }
@@ -197,17 +198,47 @@ void tup_insert_into_curs_line(Editor_t *editor)
             goto exit;
         }
         arrins(editor->lines, editor->curs_idx, line);
-    };
+    }
 exit:
     tup_command_dispatcher(editor);
 }
 
 void tup_append_line(Editor_t *editor)
 {
-    // TODO: changeme
+    Line_t *line = editor->lines[editor->curs_idx - 1];
+    char *data = line->data;
+    fprintf(stdout, "%s", data);
+
+    char *data_to_append = (char *)calloc(UNIVERSAL_SIZE*sizeof(char), 0);
+    assert(data_to_append != NULL);
+    int n = UNIVERSAL_SIZE - strlen(data);
+
+    while (1) {
+        data_to_append = fgets(data_to_append, UNIVERSAL_SIZE, stdin);
+        assert(data_to_append != NULL);
+
+        if (strnstr(data_to_append, ".", 1)) goto exit;
+
+        data = _tup_remove_new_line_char(data);
+        line->data = strncat(data, data_to_append, n);
+        line->start = 0;
+        line->end = strlen(data);
+
+        for (int i = 0; i < arrlen(editor->lines); ++i) {
+            printf("%s", (editor->lines)[i]->data);
+        }
+    }
+exit:
     tup_insert(editor);
 }
 
+char *_tup_remove_new_line_char(char *data)
+{
+    for (unsigned long i = 0; i < strlen(data); ++i) {
+        if (data[i] == '\n') data[i] = 0;
+    }
+    return data;
+}
 
 void tup_delete_line(Editor_t *editor)
 {
