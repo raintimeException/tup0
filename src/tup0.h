@@ -150,8 +150,10 @@ void tup_insert(Editor_t *editor)
 
     while (1) {
         data = (char *)calloc(UNIVERSAL_SIZE, 0);
-        data = fgets(data, UNIVERSAL_SIZE, stdin);
         assert(data != NULL);
+        fprintf(stdout, "INFO: insert '.' to stop insertion\n");
+
+        data = fgets(data, UNIVERSAL_SIZE, stdin);
 
         line = (Line_t *)malloc(sizeof(Line_t));
         assert(line != NULL);
@@ -207,19 +209,20 @@ void tup_append_line(Editor_t *editor)
 {
     Line_t *line = editor->lines[editor->curs_idx - 1];
     char *data = line->data;
-    fprintf(stdout, "%s", data);
 
     char *data_to_append = (char *)calloc(UNIVERSAL_SIZE*sizeof(char), 0);
     assert(data_to_append != NULL);
     int n = UNIVERSAL_SIZE - strlen(data);
 
+    data = _tup_remove_new_line_char(data);
+    fprintf(stdout, "%s", data);
+
     while (1) {
         data_to_append = fgets(data_to_append, UNIVERSAL_SIZE, stdin);
         assert(data_to_append != NULL);
-
         if (strnstr(data_to_append, ".", 1)) goto exit;
 
-        data = _tup_remove_new_line_char(data);
+
         line->data = strncat(data, data_to_append, n);
         line->start = 0;
         line->end = strlen(data);
