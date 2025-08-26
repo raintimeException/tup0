@@ -4,9 +4,11 @@
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
 
-#define PROMPT_SIGN     "*"
-#define UNIVERSAL_SIZE  8192
-#define DEFAULT_PATH    "default_path"
+#define PROMPT_SIGN             "*"
+#define STOP_INSERTION_SIGN     "."
+#define UNIVERSAL_SIZE          8192
+#define DEFAULT_PATH            "default_path"
+
 #define PEDANTIC
 #undef  PEDANTIC
 
@@ -14,17 +16,10 @@
 #define TUP_UNREACHABLE(message) do { fprintf(stderr, "%s:%d: UNREACHABLE: %s\n", __FILE__, __LINE__, message); abort(); } while(0)
 
 typedef struct {
-    char *data;
-    int start;
-    int end;
-    int idx;
-} Line_t;
-
-typedef struct {
     const char *f_in;
     const char *f_out;
 
-    Line_t **lines;
+    char **lines;
 
     int curs_idx;
     char command[UNIVERSAL_SIZE];
@@ -46,7 +41,6 @@ void tup_check_desperation_level(void);
 void tup_insert(Editor_t *editor);
 void tup_insert_into_curs_line(Editor_t *editor);
 void tup_append_line(Editor_t *editor);
-char *_tup_remove_new_line_char(char *data);
 void tup_delete_line(Editor_t *editor);
 int _tup_editor_set_f_out(Editor_t *editor, char *path);
 void tup_write_out(Editor_t *editor);
@@ -88,12 +82,22 @@ void tup_command_dispatcher(Editor_t *editor)
                 case 'q': {
                     tup_quit(editor);
                 }; break;
+                case ':': {
+                    char *command = &(editor->command)[1];
+                    char *line_num_str = strtok(command, ":");
+                    int line_num = 0;
+                    if ((line_num = atoi(line_num_str)) > 0) {
+                        editor->curs_idx = line_num;
+                        tup_insert_into_curs_line(editor);
+                        printf("inserting into: %d\n", editor->curs_idx);
+                    }
+                }; break;
                 default: {
                     fprintf(stdout, "?: %s", editor->command);
                 };
             };
         } else if ((editor->curs_idx = atoi(editor->command)) > 0) { 
-            fprintf(stdout, "curs_idx %d, content: %s\n", editor->curs_idx, editor->lines[editor->curs_idx - 1]->data);
+            fprintf(stdout, "curs_idx %d, content: %s\n", editor->curs_idx, editor->lines[editor->curs_idx - 1]);
         } else {
             tup_help();
         }
@@ -145,34 +149,21 @@ void tup_check_desperation_level(void)
 
 void tup_insert(Editor_t *editor)
 {
-    char *data = NULL;
-    Line_t *line = NULL;
+    char c = 0;
+    char *line = NULL;
 
     while (1) {
-        data = (char *)calloc(UNIVERSAL_SIZE, 0);
-        assert(data != NULL);
         fprintf(stdout, "INFO: insert '.' to stop insertion\n");
 
-        data = fgets(data, UNIVERSAL_SIZE, stdin);
-
-        line = (Line_t *)malloc(sizeof(Line_t));
-        assert(line != NULL);
-
-        line->data = strdup(data);
-        line->start = 0;
-        line->end = strlen(data);
-
-        if (strnstr(line->data, ".", 1) != NULL) {
-            free(line);
-            goto exit;
+        for (; (c = fgetc(stdin)) != '\n';) {
+            arrput(line, c);
         }
+        arrput(line, c);
+        if (strnstr(line, STOP_INSERTION_SIGN, 1) != NULL)
+                goto exit;
         arrput(editor->lines, line);
-        for (int i = 0; i < arrlen(editor->lines); ++i) {
-            printf("%s", (editor->lines)[i]->data);
-        }
         editor->curs_idx = arrlen(editor->lines);
         line = NULL;
-        data = NULL;
     }
 exit:
     tup_command_dispatcher(editor);
@@ -180,68 +171,47 @@ exit:
 
 void tup_insert_into_curs_line(Editor_t *editor)
 {
-    char *data = NULL;
-    Line_t *line = NULL;
+    char c = 0;
+    char *new_line = NULL;
 
-    while (1) {
-        data = (char *)calloc(UNIVERSAL_SIZE, 0);
-        data = fgets(data, UNIVERSAL_SIZE, stdin);
-        assert(data != NULL);
-
-        line = (Line_t *)malloc(sizeof(Line_t));
-        assert(line != NULL);
-
-        line->data = strdup(data);
-        line->start = 0;
-        line->end = strlen(data);
-
-        if (strnstr(line->data, ".", 1) != NULL) {
-            free(line);
-            goto exit;
-        }
-        arrins(editor->lines, editor->curs_idx, line);
-    }
-exit:
+    for (; (c = fgetc(stdin)) != '\n';)
+        arrput(new_line, c);
+    arrput(new_line, c);
+    editor->lines[editor->curs_idx - 1] = strdup(new_line);
+    editor->curs_idx = arrlen(editor->lines);
+    fprintf(stdout, "[INFO]: line has been changed to: %s", new_line);
     tup_command_dispatcher(editor);
 }
 
 void tup_append_line(Editor_t *editor)
 {
-    Line_t *line = editor->lines[editor->curs_idx - 1];
-    char *data = line->data;
+    char c = 0;
+    char *current_line = editor->lines[editor->curs_idx - 1];
+    char *current_line_new = NULL;
+    int i = 0;
 
-    char *data_to_append = (char *)calloc(UNIVERSAL_SIZE*sizeof(char), 0);
-    assert(data_to_append != NULL);
-    int n = UNIVERSAL_SIZE - strlen(data);
-
-    data = _tup_remove_new_line_char(data);
-    fprintf(stdout, "%s", data);
+    for (i = 0; i < arrlen(current_line) - 1; ++i) {
+        arrput(current_line_new, current_line[i]);
+    }
 
     while (1) {
-        data_to_append = fgets(data_to_append, UNIVERSAL_SIZE, stdin);
-        assert(data_to_append != NULL);
-        if (strnstr(data_to_append, ".", 1)) goto exit;
+        for (; (c = fgetc(stdin)) != '\n';) {
+            arrput(current_line_new, c);
+        }
+        arrput(current_line_new, c);
 
-
-        line->data = strncat(data, data_to_append, n);
-        line->start = 0;
-        line->end = strlen(data);
+        editor->lines[editor->curs_idx - 1] = strdup(current_line_new);
+        editor->curs_idx = arrlen(editor->lines);
 
         for (int i = 0; i < arrlen(editor->lines); ++i) {
-            printf("%s", (editor->lines)[i]->data);
+            printf("%s", editor->lines[i]);
         }
+        goto exit;
     }
 exit:
     tup_insert(editor);
 }
 
-char *_tup_remove_new_line_char(char *data)
-{
-    for (unsigned long i = 0; i < strlen(data); ++i) {
-        if (data[i] == '\n') data[i] = 0;
-    }
-    return data;
-}
 
 void tup_delete_line(Editor_t *editor)
 {
@@ -269,11 +239,10 @@ void tup_write_out(Editor_t *editor)
     assert(data != NULL);
 
     for (int i = 0; i < arrlen(editor->lines); ++i) {
-        data = editor->lines[i]->data;
+        data = editor->lines[i];
         fprintf(stdout, "%s", data);
         assert(fwrite(data, sizeof(char), strlen(data), f_strem) != 0);
     }
-    free(data);
     arrfree(editor->lines);
     fprintf(stdout, "[INFO]: Buffer was written into: %s\n", editor->f_out);
 }
@@ -335,20 +304,13 @@ int _tup_editor_load_content(Editor_t *editor, const char *content, int content_
 {
     char *data = (char *)calloc(UNIVERSAL_SIZE, 0);
     assert(data != NULL);
+    char *line = NULL;
 
-    Line_t *line = NULL;
     int i, j;
     for (i = 0, j = 0; i < content_size; ++i, ++j) {
         data[j] = content[i];
         if (data[j] == 10) {
             data[++j] = '\0';
-
-            line = (Line_t *)malloc(sizeof(Line_t));
-            assert(line != NULL);
-
-            line->data = data;
-            line->start = 0;
-            line->end = strlen(data);
 
             arrput(editor->lines, line);
             j = -1;
