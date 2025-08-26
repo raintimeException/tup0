@@ -89,7 +89,6 @@ void tup_command_dispatcher(Editor_t *editor)
                     if ((line_num = atoi(line_num_str)) > 0) {
                         editor->curs_idx = line_num;
                         tup_insert_into_curs_line(editor);
-                        printf("inserting into: %d\n", editor->curs_idx);
                     }
                 }; break;
                 default: {
@@ -153,8 +152,9 @@ void tup_insert(Editor_t *editor)
     char *line = NULL;
 
     while (1) {
+#ifdef PEDANTIC
         fprintf(stdout, "INFO: insert '.' to stop insertion\n");
-
+#endif
         for (; (c = fgetc(stdin)) != '\n';) {
             arrput(line, c);
         }
