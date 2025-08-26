@@ -264,11 +264,12 @@ void tup_quit(Editor_t *editor)
     } else {
         fprintf(stdout, "[INFO]: lines in the buffer: %d\n", hm_len);
     }
+    fprintf(stdout, "[INFO]: %s\n", exit_message);
 #else
     arrfree(editor->lines);
+    fprintf(stdout, "[INFO]: %s\n", exit_message);
     exit(0);
 #endif
-    fprintf(stdout, "[INFO]: %s\n", exit_message);
 }
 
 int _tup_editor_set_f_in(Editor_t *editor, char *path)
