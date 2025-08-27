@@ -8,6 +8,7 @@
 #define STOP_INSERTION_SIGN     "."
 #define UNIVERSAL_SIZE          8192
 #define DEFAULT_PATH            "default_path"
+#define EXIT_MESSAGE            "GOOD LUCK MATE"
 
 #define PEDANTIC
 #undef  PEDANTIC
@@ -33,7 +34,6 @@ typedef enum {
 Help_Level help_Level = MIN;
 static int desperation_level = 0;
 
-static const char *exit_message = "GOOD LUCK MATE";
 
 void tup_command_dispatcher(Editor_t *editor);
 void tup_help(void);
@@ -44,9 +44,9 @@ void tup_append_line(Editor_t *editor);
 void tup_delete_line(Editor_t *editor);
 int _tup_editor_set_f_out(Editor_t *editor, char *path);
 void tup_write_out(Editor_t *editor);
-int _tup_editor_set_f_in(Editor_t *editor, char *path);
 int _tup_editor_load_content(Editor_t *editor, const char *content, int content_size);
 void tup_read_in(Editor_t *editor);
+int _tup_editor_set_f_in(Editor_t *editor, char *path);
 void tup_quit(Editor_t *editor);
 
 
@@ -247,39 +247,6 @@ void tup_write_out(Editor_t *editor)
     fprintf(stdout, "[INFO]: Buffer was written into: %s\n", editor->f_out);
 }
 
-void tup_quit(Editor_t *editor)
-{
-#ifdef PEDANTIC
-    int remain_inside = arrlen(editor->lines);
-    if (remain_inside > 0) {
-        fprintf("[WARN]: buffer is not empty: %d\n", hm_len);
-        fprintf("[WARN]: quit(y/n):\n");
-        char response = fgetc(stdin);
-        if (response == 'y' || response == 'Y') {
-            fprintf(stdout, "[INFO]: ok.\n");
-            exit(1);
-        } else {
-            tup_command_dispatcher(editor);
-        }
-    } else {
-        fprintf(stdout, "[INFO]: lines in the buffer: %d\n", hm_len);
-    }
-    fprintf(stdout, "[INFO]: %s\n", exit_message);
-#else
-    arrfree(editor->lines);
-    fprintf(stdout, "[INFO]: %s\n", exit_message);
-    exit(0);
-#endif
-}
-
-int _tup_editor_set_f_in(Editor_t *editor, char *path)
-{
-    editor->f_in = path;
-    printf("%s\n", editor->f_in);
-    printf("%s\n", path);
-    return 1;
-}
-
 void tup_read_in(Editor_t *editor)
 {
     FILE *file = fopen(editor->f_in, "ab+");
@@ -299,25 +266,54 @@ void tup_read_in(Editor_t *editor)
         exit(1);
     }
     fprintf(stdout, "[INFO]: Content from file [%s] has been loaded\n", editor->f_in);
+    tup_command_dispatcher(editor);
 }
 
 int _tup_editor_load_content(Editor_t *editor, const char *content, int content_size)
 {
-    char *data = (char *)calloc(UNIVERSAL_SIZE, 0);
-    assert(data != NULL);
     char *line = NULL;
 
-    int i, j;
-    for (i = 0, j = 0; i < content_size; ++i, ++j) {
-        data[j] = content[i];
-        if (data[j] == 10) {
-            data[++j] = '\0';
-
+    for (int i = 0; i < content_size; ++i) {
+        arrput(line, content[i]);
+        if (content[i] == '\0') {
             arrput(editor->lines, line);
-            j = -1;
+            line = NULL;
         }
     }
     return 1;
+}
+
+int _tup_editor_set_f_in(Editor_t *editor, char *path)
+{
+    editor->f_in = path;
+    printf("%s\n", editor->f_in);
+    printf("%s\n", path);
+    return 1;
+}
+
+void tup_quit(Editor_t *editor)
+{
+#ifdef PEDANTIC
+    int remain_inside = arrlen(editor->lines);
+    if (remain_inside > 0) {
+        fprintf("[WARN]: buffer is not empty: %d\n", hm_len);
+        fprintf("[WARN]: quit(y/n):\n");
+        char response = fgetc(stdin);
+        if (response == 'y' || response == 'Y') {
+            fprintf(stdout, "[INFO]: ok.\n");
+            exit(1);
+        } else {
+            tup_command_dispatcher(editor);
+        }
+    } else {
+        fprintf(stdout, "[INFO]: lines in the buffer: %d\n", hm_len);
+    }
+    fprintf(stdout, "[INFO]: %s\n", EXIT_MESSAGE);
+#else
+    arrfree(editor->lines);
+    fprintf(stdout, "[INFO]: %s\n", EXIT_MESSAGE);
+    exit(0);
+#endif
 }
 
 #endif // TUP_IMPLEMENTATION
