@@ -5,7 +5,8 @@ int main(int argc, char* const *argv)
 {
     Editor_t editor = {0};
 
-    tup_help();
+    editor.help_level = MIN;
+    tup_help(&editor);
 
     if (argc == 1) {
         tup_command_dispatcher(&editor);
@@ -16,7 +17,8 @@ int main(int argc, char* const *argv)
         }
         tup_read_in(&editor);
     } else {
-        TUP_UNREACHABLE("main");
+        fprintf(stderr, "[ERROR]: something happend in main()\n");
+        exit(1);
     }
 
     return 0;

@@ -13,8 +13,12 @@
 #define PEDANTIC
 #undef  PEDANTIC
 
-#define TUP_TODO(message) do { fprintf(stderr, "%s:%d: TODO: %s\n", __FILE__, __LINE__, message); abort(); } while(0)
-#define TUP_UNREACHABLE(message) do { fprintf(stderr, "%s:%d: UNREACHABLE: %s\n", __FILE__, __LINE__, message); abort(); } while(0)
+///////////////////////////////////////////////////////////////////////////////
+typedef enum {
+    MIN,
+    MAX,
+    EXTREME,
+} Help_Level;
 
 typedef struct {
     const char *f_in;
@@ -24,37 +28,33 @@ typedef struct {
 
     int curs_idx;
     char command[UNIVERSAL_SIZE];
+
+    Help_Level help_level;
 } Editor_t;
-
-typedef enum {
-    MIN,
-    MAX,
-    EXTREME,
-} Help_Level;
-Help_Level help_Level = MIN;
-static int desperation_level = 0;
-
+///////////////////////////////////////////////////////////////////////////////
 
 void tup_command_dispatcher(Editor_t *editor);
-void tup_help(void);
-void tup_check_desperation_level(void);
+void tup_help(Editor_t *editor);
+void _tup_check_desperation_level(Editor_t *editor);
 void tup_insert(Editor_t *editor);
 void tup_insert_into_curs_line(Editor_t *editor);
 void tup_append_line(Editor_t *editor);
 void tup_delete_line(Editor_t *editor);
+void tup_print_lines(Editor_t *editor);
 int _tup_editor_set_f_out(Editor_t *editor, char *path);
 void tup_write_out(Editor_t *editor);
 int _tup_editor_load_content(Editor_t *editor, const char *content, int content_size);
 void tup_read_in(Editor_t *editor);
 int _tup_editor_set_f_in(Editor_t *editor, char *path);
 void tup_quit(Editor_t *editor);
-
+///////////////////////////////////////////////////////////////////////////////
 
 #ifdef TUP_IMPLEMENTATION
 
+///////////////////////////////////////////////////////////////////////////////
 void tup_command_dispatcher(Editor_t *editor)
 {
-    while (1) {
+    for (;;) {
         if (!fgets(editor->command, UNIVERSAL_SIZE, stdin)) {
             fprintf(stderr, "Could not read the command: %s", editor->command);
         }
@@ -62,7 +62,7 @@ void tup_command_dispatcher(Editor_t *editor)
             char cmd = (editor->command)[1];
             switch (cmd) {
                 case 'h': {
-                    tup_help();
+                    tup_help(editor);
                 }; break;
                 case 'i': {
                     tup_insert(editor);
@@ -78,6 +78,9 @@ void tup_command_dispatcher(Editor_t *editor)
                 }; break;
                 case 'd': {
                     tup_delete_line(editor);
+                }; break;
+                case 'p': {
+                    tup_print_lines(editor);
                 }; break;
                 case 'q': {
                     tup_quit(editor);
@@ -98,69 +101,78 @@ void tup_command_dispatcher(Editor_t *editor)
         } else if ((editor->curs_idx = atoi(editor->command)) > 0) { 
             fprintf(stdout, "curs_idx %d, content: %s\n", editor->curs_idx, editor->lines[editor->curs_idx - 1]);
         } else {
-            tup_help();
+            tup_help(editor);
         }
         memset(editor->command, 0, UNIVERSAL_SIZE);
     }
 }
 
-void tup_help(void)
+void tup_help(Editor_t *editor)
 {
-    tup_check_desperation_level();
-    switch (help_Level) {
-    case MIN: {
-        fprintf(stdout, ":[command]\n");
-    } break;
-    case MAX: {
-    fprintf(stdout,
-    PROMPT_SIGN":[command] [filename]                                       \n\
-    :h                     - help.                                          \n\
-    :i                     - insert.                                        \n\
-    :a                     - append.                                        \n\
-    :w [filename]          - write.                                         \n\
-    :d[linenumber]         - delete line.                                   \n\
-    :ex                    - explore current directory (?)                  \n\
-    :q                     - quit.                                          \n\
-............................................................................\n\
-    NOTE: options marked with '(?)' are not implemented yet                 \n\
-    \n");
-    } break;
-    case EXTREME: {
-        fprintf(stdout, PROMPT_SIGN": are you stupid?\n");
-    } break;
-    default:
-        TUP_UNREACHABLE("tup_help");
+    _tup_check_desperation_level(editor);
+    switch (editor->help_level) {
+        case MIN: {
+            {
+                fprintf(stdout, ":[command]\n");
+            }
+        } break;
+        case MAX: {
+            {
+                fprintf(stdout,
+                PROMPT_SIGN":[command] [filename]                                       \n\
+                :h                     - help.                                          \n\
+                :i                     - insert.                                        \n\
+                :a                     - append.                                        \n\
+                :w [filename]          - write.                                         \n\
+                :d[linenumber]         - delete line.                                   \n\
+                :ex                    - explore current directory (?)                  \n\
+                :q                     - quit.                                          \n\
+            ............................................................................\n\
+                NOTE: options marked with '(?)' are not implemented yet                 \n\
+                \n");
+            }
+        } break;
+        case EXTREME: {
+            {
+                fprintf(stdout, PROMPT_SIGN": are you stupid?\n");
+            }
+        } break;
+        default:
+            {
+                fprintf(stdout, "ERROR!!!\n");
+                exit(1);
+            }
     };
     fprintf(stdout, PROMPT_SIGN);
 }
 
-void tup_check_desperation_level(void)
+void _tup_check_desperation_level(Editor_t *editor)
 {
+    static int desperation_level = 0;
     desperation_level++;
     if (desperation_level > 0 && desperation_level < 3) {
-        help_Level = MIN;
+        editor->help_level = MIN;
     } else if (desperation_level >= 3 && desperation_level <= 10) {
-        help_Level = MAX;
+        editor->help_level = MAX;
     } else {
-        help_Level = EXTREME;
+        editor->help_level = EXTREME;
     }
 }
 
 void tup_insert(Editor_t *editor)
 {
-    char c = 0;
+    char c;
     char *line = NULL;
 
-    while (1) {
+    for (;;) {
 #ifdef PEDANTIC
         fprintf(stdout, "INFO: insert '.' to stop insertion\n");
 #endif
-        for (; (c = fgetc(stdin)) != '\n';) {
-            arrput(line, c);
-        }
+        for (c = 0; (c = fgetc(stdin)) != '\n'; arrput(line, c))
+            ;
         arrput(line, c);
-        if (strnstr(line, STOP_INSERTION_SIGN, 1) != NULL)
-                goto exit;
+
+        if (strnstr(line, STOP_INSERTION_SIGN, 1) != NULL) goto exit;
         arrput(editor->lines, line);
         editor->curs_idx = arrlen(editor->lines);
         line = NULL;
@@ -171,11 +183,11 @@ exit:
 
 void tup_insert_into_curs_line(Editor_t *editor)
 {
-    char c = 0;
+    char c;
     char *new_line = NULL;
 
-    for (; (c = fgetc(stdin)) != '\n';)
-        arrput(new_line, c);
+    for (c = 0; (c = fgetc(stdin)) != '\n'; arrput(new_line, c))
+        ;
     arrput(new_line, c);
     editor->lines[editor->curs_idx - 1] = strdup(new_line);
     editor->curs_idx = arrlen(editor->lines);
@@ -194,18 +206,16 @@ void tup_append_line(Editor_t *editor)
         arrput(current_line_new, current_line[i]);
     }
 
-    while (1) {
-        for (; (c = fgetc(stdin)) != '\n';) {
-            arrput(current_line_new, c);
-        }
+    for (;;) {
+        for (c = 0; (c = fgetc(stdin)) != '\n'; arrput(current_line_new, c))
+            ;
         arrput(current_line_new, c);
 
         editor->lines[editor->curs_idx - 1] = strdup(current_line_new);
         editor->curs_idx = arrlen(editor->lines);
 
-        for (int i = 0; i < arrlen(editor->lines); ++i) {
-            printf("%s", editor->lines[i]);
-        }
+        //TODO: delete this
+        tup_print_lines(editor);
         goto exit;
     }
 exit:
@@ -218,6 +228,14 @@ void tup_delete_line(Editor_t *editor)
     arrdel(editor->lines, editor->curs_idx - 1);
     fprintf(stdout, "[INFO]: line [%d] has been deleted\n", editor->curs_idx);
 }
+
+void tup_print_lines(Editor_t *editor)
+{
+    for (int i = 0; i < arrlen(editor->lines); ++i) {
+        fprintf(stdout, "%s", (editor->lines)[i]);
+    }
+}
+
 
 int _tup_editor_set_f_out(Editor_t *editor, char *path)
 {
@@ -316,4 +334,8 @@ void tup_quit(Editor_t *editor)
 #endif
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
 #endif // TUP_IMPLEMENTATION
+
+///////////////////////////////////////////////////////////////////////////////
